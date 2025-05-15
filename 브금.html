@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>브금 플레이어</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      background: #f3f6fb;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .player-container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      width: 100%;
+      max-width: 620px;
+    }
+
+    h1 {
+      font-size: 1.8em;
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    .category-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .category-buttons button {
+      padding: 8px 16px;
+      background-color: #ddd;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .category-buttons button.active {
+      background-color: #1abc9c;
+      color: #fff;
+    }
+
+    .song-group {
+      display: none;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .song-group.active {
+      display: flex;
+    }
+
+    .song-group button {
+      flex: 1 1 calc(33.33% - 20px);
+      min-width: 100px;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background-color: #1abc9c;
+      color: white;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .song-group button:hover {
+      background-color: #16a085;
+    }
+
+    .song-group button.active {
+      background-color: #2980b9;
+      font-weight: bold;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0px #2980b9; }
+      50% { box-shadow: 0 0 12px #2980b9; }
+      100% { box-shadow: 0 0 0px #2980b9; }
+    }
+
+    #status {
+      font-size: 0.95em;
+      color: #555;
+      margin-top: 10px;
+    }
+
+    #volume-control {
+      margin-top: 20px;
+      font-size: 0.9em;
+      color: #444;
+    }
+
+    #player {
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      position: absolute;
+      left: -9999px;
+    }
+  </style>
+</head>
+<body>
+  <div class="player-container">
+    <h1>브금플레이어</h1>
+
+    <div class="category-buttons">
+      <button onclick="showCategory('all')" class="active">전체</button>
+      <button onclick="showCategory('일반')">일반</button>
+      <button onclick="showCategory('도전')">도전</button>
+      <button onclick="showCategory('시상식')">시상식</button>
+      <button onclick="showCategory('미스테리')">미스테리</button>
+    </div>
+
+    <div id="group-일반" class="song-group active" data-category="일반">
+      <button onclick="playSong('UZE2a9gTsDk', this)">엉뚱한 브금</button>
+      <button onclick="playSong('qpgZkWIDz54', this)">코난브금</button>
+      <button onclick="playSong('IdaMDpmEQR8', this)">코난우우우브금</button>
+      <button onclick="playSong('jIxas0a-KgM', this)">웅장한브금</button>
+      <button onclick="playSong('ylGcL7js1L4', this)">남순로겐</button>
+      <button onclick="playSong('28CUowxIqMM', this)">드릴쇼브금</button>
+      <button onclick="playSong('NecOTHpIB3k', this)">이영호브금</button>
+      <button onclick="playSong('ds3iedhVZaQ', this)">이마트마감브금</button>
+
+    </div>
+
+    <div id="group-도전" class="song-group active" data-category="도전">
+      <button onclick="playSong('tbMIHckT5No', this)">전투3</button>
+      <button onclick="playSong('aThvfbf5ERY', this)">도전99초브금</button>
+    </div>
+    <div id="group-시상식" class="song-group active" data-category="시상식">
+      <button onclick="playSong('oKI9eHrNqH8', this)">시상브금1</button>
+      <button onclick="playSong('arRrJrNXxzg', this)">시상브금2</button>
+    </div>
+
+    <div id="group-미스테리" class="song-group active" data-category="미스테리">
+      <button onclick="playSong('USSUsIUTiP8', this)">추적60분브금</button>
+      <button onclick="playSong('be8Yeg6DEJs', this)">미스테리브금</button>
+      <button onclick="playSong('PBkriWGA9pc', this)">미스테리브금2</button>
+    </div>
+
+    <div id="volume-control">
+      <label for="volumeSlider">볼륨</label>
+      <input type="range" id="volumeSlider" min="0" max="100" value="100" />
+    </div>
+
+    <p id="status">곡을 선택해주세요.</p>
+    <div id="player"></div>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player;
+    let currentId = null;
+    let currentBtn = null;
+    let savedVolume = 100;
+    let playing = false;
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        height: '0',
+        width: '0',
+        videoId: '',
+        playerVars: { autoplay: 0, controls: 0, start: 2 },
+        events: {
+          'onReady': () => player.setVolume(savedVolume),
+          'onStateChange': e => {
+            if (e.data === YT.PlayerState.PLAYING) playing = true;
+            if (e.data === YT.PlayerState.PAUSED) playing = false;
+            updateUI();
+          }
+        }
+      });
+    }
+
+function playSong(videoId, btn) {
+  if (currentId === videoId) {
+    togglePlayPause();
+    return;
+  }
+
+  if (currentBtn) currentBtn.classList.remove("active");
+  btn.classList.add("active");
+
+  currentId = videoId;
+  currentBtn = btn;
+
+
+  // 특정 영상만 ?초부터 시작
+
+  if (videoId === "UZE2a9gTsDk") {
+    startTime = 2;
+  }
+
+  player.loadVideoById({ videoId: videoId, startSeconds: startTime });
+  player.setVolume(savedVolume);
+  playing = true;
+  updateUI();
+}
+
+    function togglePlayPause() {
+      if (!player) return;
+      if (playing) player.pauseVideo();
+      else player.playVideo();
+    }
+
+    function updateUI() {
+      const status = document.getElementById('status');
+      if (!currentBtn) {
+        status.innerText = '곡을 선택해주세요';
+        return;
+      }
+      status.innerText = `${currentBtn.innerText} ${playing ? '재생 중입니다' : '일시정지됨'} (스페이스바로 토글)`;
+    }
+
+    document.getElementById("volumeSlider").addEventListener("input", function () {
+      savedVolume = parseInt(this.value, 10);
+      if (player && player.setVolume) {
+        player.setVolume(savedVolume);
+      }
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlayPause();
+      }
+    });
+
+    function showCategory(category) {
+      document.querySelectorAll('.category-buttons button').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.category-buttons button[onclick="showCategory('${category}')"]`).classList.add('active');
+
+      const groups = document.querySelectorAll('.song-group');
+      groups.forEach(group => {
+        if (category === 'all' || group.dataset.category === category) {
+          group.classList.add('active');
+        } else {
+          group.classList.remove('active');
+        }
+      });
+    }
+  </script>
+</body>
+</html>
